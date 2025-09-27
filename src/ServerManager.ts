@@ -240,17 +240,18 @@ export default class ServerManager {
 
       if (peer?.managedId) this.managedPeers.delete(peer.managedId);
     });
-    fetch(
-      "https://aa0c-2001-8f8-1135-4527-7117-7cac-571d-198d.ngrok-free.app",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          message: "room created or new addition in room",
-          peerData: peer,
-          room: room,
-        }),
-      }
-    );
+    // Debug fetch removed - was causing circular JSON structure error
+    // fetch(
+    //   "https://aa0c-2001-8f8-1135-4527-7117-7cac-571d-198d.ngrok-free.app",
+    //   {
+    //     method: "POST",
+    //     body: JSON.stringify({
+    //       message: "room created or new addition in room",
+    //       peerData: peer,
+    //       room: room,
+    //     }),
+    //   }
+    // );
 
     room.addPeer(peer);
   }
