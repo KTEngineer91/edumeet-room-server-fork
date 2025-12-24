@@ -13,6 +13,7 @@ import { Peer } from './Peer';
 import Room from './Room';
 import ManagementService from './ManagementService';
 import { getConfig } from './Config';
+import { verifyPeer } from './common/token';
 
 const logger = new Logger('Server');
 const config = getConfig();
@@ -93,6 +94,7 @@ webServer.on('request', async (req, res) => {
 	if (req.method === 'OPTIONS') {
 		res.writeHead(200);
 		res.end();
+
 		return;
 	}
 
@@ -100,17 +102,19 @@ webServer.on('request', async (req, res) => {
 	if (req.method !== 'POST') {
 		res.writeHead(405, { 'Content-Type': 'application/json' });
 		res.end(JSON.stringify({ error: 'Method not allowed' }));
+
 		return;
 	}
 
-	// Optional API key authentication
-	if (config.internalApiKey) {
+	// Optional JWT authentication (reuses existing managementService JWT keys)
+	if (config.managementService?.jwtPublicKeys && config.managementService.jwtPublicKeys.length > 0) {
 		const authHeader = req.headers.authorization;
-		const apiKey = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+		const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
-		if (!apiKey || apiKey !== config.internalApiKey) {
+		if (!token || !verifyPeer(token)) {
 			res.writeHead(401, { 'Content-Type': 'application/json' });
 			res.end(JSON.stringify({ error: 'Unauthorized' }));
+
 			return;
 		}
 	}
@@ -118,6 +122,7 @@ webServer.on('request', async (req, res) => {
 	try {
 		// Read request body
 		let body = '';
+
 		for await (const chunk of req) {
 			body += chunk.toString();
 		}
