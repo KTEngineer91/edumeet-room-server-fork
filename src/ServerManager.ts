@@ -255,4 +255,33 @@ export default class ServerManager {
 
     room.addPeer(peer);
   }
+
+  @skipIfClosed
+  public getParticipantCounts(roomIds?: string[]): Record<string, { active: number; lobby: number; pending: number; waiting: number; total: number }> {
+    const result: Record<string, { active: number; lobby: number; pending: number; waiting: number; total: number }> = {};
+
+    const roomsToProcess = roomIds 
+      ? roomIds.map(id => ({ id, room: this.rooms.get(id) })).filter(({ room }) => room !== undefined)
+      : Array.from(this.rooms.entries()).map(([id, room]) => ({ id, room }));
+
+    for (const { id, room } of roomsToProcess) {
+      if (!room) continue;
+
+      const active = room.peers.items.length;
+      const lobby = room.lobbyPeers.items.length;
+      const pending = room.pendingPeers.items.length;
+      const waiting = room.waitingPeers.items.length;
+      const total = active + lobby + pending + waiting;
+
+      result[id] = {
+        active,
+        lobby,
+        pending,
+        waiting,
+        total
+      };
+    }
+
+    return result;
+  }
 }
