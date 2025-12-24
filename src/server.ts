@@ -107,21 +107,16 @@ webServer.on('request', async (req, res) => {
 	}
 
 	// Optional JWT authentication (reuses existing managementService JWT keys)
-	// Only validate if Authorization header is provided (allows testing without token)
 	if (config.managementService?.jwtPublicKeys && config.managementService.jwtPublicKeys.length > 0) {
 		const authHeader = req.headers.authorization;
+		const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
 
-		if (authHeader) {
-			const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
+		if (!token || !verifyPeer(token)) {
+			res.writeHead(401, { 'Content-Type': 'application/json' });
+			res.end(JSON.stringify({ error: 'Unauthorized' }));
 
-			if (!token || !verifyPeer(token)) {
-				res.writeHead(401, { 'Content-Type': 'application/json' });
-				res.end(JSON.stringify({ error: 'Unauthorized' }));
-
-				return;
-			}
+			return;
 		}
-		// If no Authorization header, allow request (for internal network testing)
 	}
 
 	try {
