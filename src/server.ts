@@ -76,6 +76,69 @@ const socketServer = new IOServer(webServer, {
 
 socketServer.on('connection', socketHandler);
 
+// HTTP endpoint for participant counts (registered after Socket.io)
+webServer.on('request', async (req, res) => {
+	// Only handle requests to /internal/rooms/participants
+	if (req.url !== '/internal/rooms/participants') {
+		// Let Socket.io handle other requests
+		return;
+	}
+
+	// Set CORS headers
+	res.setHeader('Access-Control-Allow-Origin', '*');
+	res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+	res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+	// Handle preflight OPTIONS request
+	if (req.method === 'OPTIONS') {
+		res.writeHead(200);
+		res.end();
+		return;
+	}
+
+	// Only handle POST requests
+	if (req.method !== 'POST') {
+		res.writeHead(405, { 'Content-Type': 'application/json' });
+		res.end(JSON.stringify({ error: 'Method not allowed' }));
+		return;
+	}
+
+	// Optional API key authentication
+	if (config.internalApiKey) {
+		const authHeader = req.headers.authorization;
+		const apiKey = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+
+		if (!apiKey || apiKey !== config.internalApiKey) {
+			res.writeHead(401, { 'Content-Type': 'application/json' });
+			res.end(JSON.stringify({ error: 'Unauthorized' }));
+			return;
+		}
+	}
+
+	try {
+		// Read request body
+		let body = '';
+		for await (const chunk of req) {
+			body += chunk.toString();
+		}
+
+		// Parse JSON body (roomIds is optional)
+		const requestData = body ? JSON.parse(body) : {};
+		const roomIds: string[] | undefined = requestData.roomIds;
+
+		// Get participant counts
+		const counts = serverManager.getParticipantCounts(roomIds);
+
+		// Send response
+		res.writeHead(200, { 'Content-Type': 'application/json' });
+		res.end(JSON.stringify(counts));
+	} catch (error) {
+		logger.error('Error handling participant counts request: %o', error);
+		res.writeHead(500, { 'Content-Type': 'application/json' });
+		res.end(JSON.stringify({ error: 'Internal server error' }));
+	}
+});
+
 const close = () => {
 	logger.debug('close()');
 
